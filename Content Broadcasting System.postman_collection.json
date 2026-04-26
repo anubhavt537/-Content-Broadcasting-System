@@ -1,0 +1,417 @@
+{
+  "info": {
+    "_postman_id": "639f711a-250c-4746-8c4c-0f94b84b7840",
+    "name": "Content Broadcasting System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "34751675",
+    "_collection_link": "https://go.postman.co/collection/34751675-639f711a-250c-4746-8c4c-0f94b84b7840?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Teacher",
+      "item": [
+        {
+          "name": "upload content",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": ".eyJpZCI6IjRkMTQ3ODQ0LTNmNmItNDc4Yi1iNTQwLThkMzc5ZGYyMTFkYSIsInJvbGUiOiJwcmluY2lwYWwiLCJlbWFpbCI6InJhdmkxQHNjaG9vbC5jb20iLCJpYXQiOjE3NzcyMDYwNzQsImV4cCI6MTc3NzgxMDg3NH0.exWbttGYLc_RECEJ2nonqcsmY1dtktiFScIvdoT8n_w",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Chapter 1 Questions",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "Maths",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "First unit test paper",
+                  "type": "text"
+                },
+                {
+                  "key": "start_time",
+                  "value": "2026-04-26T09:00:00.000Z",
+                  "type": "text"
+                },
+                {
+                  "key": "end_time",
+                  "value": "2026-04-26T17:00:00.000Z",
+                  "type": "text"
+                },
+                {
+                  "key": "duration",
+                  "value": " 5",
+                  "type": "text"
+                },
+                {
+                  "key": "f",
+                  "type": "file",
+                  "uuid": "fc7297c9-3cd7-4e71-a87e-2896d23e8188",
+                  "src": "/C:/Users/DELL/Pictures/Screenshots/Screenshot (6).png"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/content/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "content",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "my content",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": ".eyJpZCI6IjRkMTQ3ODQ0LTNmNmItNDc4Yi1iNTQwLThkMzc5ZGYyMTFkYSIsInJvbGUiOiJwcmluY2lwYWwiLCJlbWFpbCI6InJhdmkxQHNjaG9vbC5jb20iLCJpYXQiOjE3NzcyMDYwNzQsImV4cCI6MTc3NzgxMDg3NH0.exWbttGYLc_RECEJ2nonqcsmY1dtktiFScIvdoT8n_w",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/content/my-content",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "content",
+                "my-content"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "my schedule",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": ".eyJpZCI6IjRkMTQ3ODQ0LTNmNmItNDc4Yi1iNTQwLThkMzc5ZGYyMTFkYSIsInJvbGUiOiJwcmluY2lwYWwiLCJlbWFpbCI6InJhdmkxQHNjaG9vbC5jb20iLCJpYXQiOjE3NzcyMDYwNzQsImV4cCI6MTc3NzgxMDg3NH0.exWbttGYLc_RECEJ2nonqcsmY1dtktiFScIvdoT8n_w",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/content/my-content",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "content",
+                "my-content"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getByIdcontent",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRkMTQ3ODQ0LTNmNmItNDc4Yi1iNTQwLThkMzc5ZGYyMTFkYSIsInJvbGUiOiJwcmluY2lwYWwiLCJlbWFpbCI6InJhdmkxQHNjaG9vbC5jb20iLCJpYXQiOjE3NzcyMDYwNzQsImV4cCI6MTc3NzgxMDg3NH0.exWbttGYLc_RECEJ2nonqcsmY1dtktiFScIvdoT8n_w",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/content/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "content",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "register",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Ravi Kumar\",\"email\":\"ravi@school.com\",\"password\":\"pass123\",\"role\":\"teacher\"}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"ravi@school.com\",\"password\":\"nkk\"}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Princpal",
+      "item": [
+        {
+          "name": "pending approvals",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": ".eyJpZCI6IjRkMTQ3ODQ0LTNmNmItNDc4Yi1iNTQwLThkMzc5ZGYyMTFkYSIsInJvbGUiOiJwcmluY2lwYWwiLCJlbWFpbCI6InJhdmkxQHNjaG9vbC5jb20iLCJpYXQiOjE3NzcyMDYwNzQsImV4cCI6MTc3NzgxMDg3NH0.exWbttGYLc_RECEJ2nonqcsmY1dtktiFScIvdoT8n_w",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/approval/pending",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "approval",
+                "pending"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "approval by Id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": ".eyJpZCI6IjRkMTQ3ODQ0LTNmNmItNDc4Yi1iNTQwLThkMzc5ZGYyMTFkYSIsInJvbGUiOiJwcmluY2lwYWwiLCJlbWFpbCI6InJhdmkxQHNjaG9vbC5jb20iLCJpYXQiOjE3NzcyMDYwNzQsImV4cCI6MTc3NzgxMDg3NH0.exWbttGYLc_RECEJ2nonqcsmY1dtktiFScIvdoT8n_w",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/approval/:id/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "approval",
+                ":id",
+                "approve"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "8fd1a7e7-c53d-4a78-9913-cf1c78210b58"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "rejectApproval",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": ".eyJpZCI6IjRkMTQ3ODQ0LTNmNmItNDc4Yi1iNTQwLThkMzc5ZGYyMTFkYSIsInJvbGUiOiJwcmluY2lwYWwiLCJlbWFpbCI6InJhdmkxQHNjaG9vbC5jb20iLCJpYXQiOjE3NzcyMDYwNzQsImV4cCI6MTc3NzgxMDg3NH0.exWbttGYLc_RECEJ2nonqcsmY1dtktiFScIvdoT8n_w",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"rejection_reason\":\"my1111111\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/approval/:id/reject",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "approval",
+                ":id",
+                "reject"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "8fd1a7e7-c53d-4a78-9913-cf1c78210b58"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "student",
+      "item": [
+        {
+          "name": "live content",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/content/live/:teacherId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "content",
+                "live",
+                ":teacherId"
+              ],
+              "variable": [
+                {
+                  "key": "teacherId",
+                  "value": "8fd1a7e7-c53d-4a78-9913-cf1c78210b58"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "live content preview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/content/live/:teacherId/preview?subject=maths",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "content",
+                "live",
+                ":teacherId",
+                "preview"
+              ],
+              "query": [
+                {
+                  "key": "subject",
+                  "value": "maths"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "teacherId",
+                  "value": "8fd1a7e7-c53d-4a78-9913-cf1c78210b58"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
