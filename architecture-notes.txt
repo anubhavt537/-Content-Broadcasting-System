@@ -1,0 +1,556 @@
+================================================================
+ARCHITECTURE NOTES — Content Broadcasting System (CBS)
+================================================================
+Stack : Node.js (ES Modules) + Express + PostgreSQL (pg)
+Author: Anubhav
+Date  : April 2026
+================================================================
+
+
+----------------------------------------------------------------
+1. FOLDER STRUCTURE
+----------------------------------------------------------------
+
+content-broadcasting-system/
+├── src/
+│   ├── app.js                  → Express app setup, middleware, routes
+│   ├── server.js               → DB connect then HTTP listen
+│   ├── config/
+│   │   ├── db.js               → pg Pool instance (shared across app)
+│   │   └── multer.js           → File upload config (storage, filter, limits)
+│   ├── migrations/
+│   │   ├── 001_create_users.sql
+│   │   ├── 002_create_content.sql
+│   │   ├── 003_create_slots.sql
+│   │   └── 004_create_schedules.sql
+│   ├── models/
+│   │   ├── user.model.js       → Raw pg queries for users table
+│   │   ├── content.model.js    → Raw pg queries for content table
+│   │   └── schedule.model.js   → Raw pg queries for slots + schedules
+│   ├── services/
+│   │   ├── auth.service.js     → bcrypt hash, JWT sign, business logic
+│   │   ├── content.service.js  → Upload orchestration, slot assignment
+│   │   ├── approval.service.js → Status transitions, guard checks
+│   │   └── scheduling.service.js → Core rotation algorithm
+│   ├── controllers/
+│   │   ├── auth.controller.js
+│   │   ├── content.controller.js
+│   │   ├── approval.controller.js
+│   │   └── public.controller.js
+│   ├── routes/
+│   │   ├── auth.routes.js
+│   │   ├── content.routes.js
+│   │   ├── approval.routes.js
+│   │   └── public.routes.js
+│   ├── middlewares/
+│   │   ├── auth.middleware.js        → JWT verification
+│   │   ├── role.middleware.js        → RBAC role guard
+│   │   ├── validate.middleware.js    → Joi schema validation
+│   │   ├── uploadError.middleware.js → Multer error normalizer
+│   │   └── errorHandler.js          → Global Express error handler
+│   └── utils/
+│       ├── AppError.js         → Custom operational error class
+│       ├── asyncHandler.js     → Wraps async controllers, catches errors
+│       ├── response.js         → Uniform JSON response envelope
+│       └── validators.js       → All Joi schemas in one place
+├── uploads/                    → Local file storage (git-ignored)
+├── .env                        → Secrets (never committed)
+├── .env.example                → Template for .env
+├── package.json                → type: "module" for ES Modules
+└── architecture-notes.txt      → This file
+
+
+----------------------------------------------------------------
+2. AUTHENTICATION & RBAC FLOW
+----------------------------------------------------------------
+
+AUTHENTICATION FLOW
+───────────────────
+1. User sends POST /api/auth/register with name, email, password, role
+2. Joi validates the request body (registerSchema)
+3. AuthService checks for duplicate email in users table
+4. bcrypt hashes the password with 12 salt rounds
+5. User row is inserted into DB
+6. Response returns user object (no password_hash exposed)
+
+1. User sends POST /api/auth/login with email, password
+2. Joi validates the request body (loginSchema)
+3. AuthService fetches user by email
+4. bcrypt.compare() checks password against stored hash
+5. If valid → JWT is signed with { id, role, email } as payload
+6. Token expires in 7 days (configurable via JWT_EXPIRES_IN in .env)
+7. Token + safe user object returned to client
+
+JWT PAYLOAD STRUCTURE
+─────────────────────
+{
+  id    : "uuid",          ← used to identify user in DB
+  role  : "teacher",       ← used for RBAC checks
+  email : "x@school.com",  ← for reference
+  iat   : 1714000000,      ← issued at (set by jsonwebtoken)
+  exp   : 1714604800       ← expires at
+}
+
+RBAC FLOW (Role Based Access Control)
+──────────────────────────────────────
+Every protected route passes through two middlewares in order:
+
+  Request → protect() → authorizeRoles() → Controller
+
+protect() middleware:
+  - Reads Authorization header
+  - Expects format: "Bearer <token>"
+  - Verifies token with JWT_SECRET
+  - Attaches decoded payload to req.user
+  - Returns 401 if missing or invalid
+
+authorizeRoles(...roles) middleware:
+  - Reads req.user.role set by protect()
+  - Checks if role is in the allowed list
+  - Returns 403 if not allowed
+  - Example: authorizeRoles('principal') blocks teachers
+
+ROLE PERMISSIONS MATRIX
+────────────────────────
+Endpoint                        Teacher   Principal   Public
+─────────────────────────────────────────────────────────────
+POST /api/auth/register         ✓         ✓           ✓
+POST /api/auth/login            ✓         ✓           ✓
+POST /api/content/upload        ✓         ✗           ✗
+GET  /api/content/my-content    ✓         ✗           ✗
+GET  /api/content/my-schedule   ✓         ✗           ✗
+GET  /api/approval/pending      ✗         ✓           ✗
+GET  /api/approval/all          ✗         ✓           ✗
+PATCH /api/approval/:id/approve ✗         ✓           ✗
+PATCH /api/approval/:id/reject  ✗         ✓           ✗
+GET  /content/live/:teacherId   ✗         ✗           ✓
+
+
+----------------------------------------------------------------
+3. CONTENT UPLOAD HANDLING
+----------------------------------------------------------------
+
+UPLOAD FLOW
+───────────
+1. Teacher sends POST /api/content/upload as multipart/form-data
+2. Multer middleware runs first:
+   - Validates MIME type (image/jpeg, image/png, image/gif only)
+   - Enforces 10MB file size limit
+   - Saves file to /uploads/ with unique timestamp-random filename
+   - Attaches file metadata to req.file
+3. uploadError middleware catches any Multer-specific errors
+   and converts them to AppError with proper status codes
+4. Joi validates req.body fields (title, subject required;
+   description, start_time, end_time, duration optional)
+5. ContentService.upload() orchestrates:
+   a. Inserts content row (status defaults to 'pending')
+   b. Creates or reuses content_slot for teacher+subject combo
+   c. Inserts content_schedule row with rotation_order and duration
+
+FILE NAMING STRATEGY
+────────────────────
+Format: {timestamp}-{random9digits}.{ext}
+Example: 1714123456789-938271645.jpg
+
+Reason: Prevents filename collisions even under concurrent uploads.
+Original filename is not used for storage (security + collision risk).
+
+FILE ACCESS
+───────────
+Files are served via Express static middleware:
+  app.use('/uploads', express.static('uploads'))
+Stored file_url in DB: /uploads/filename.jpg
+Students access via: http://host/uploads/filename.jpg
+
+SUPPORTED FORMATS
+─────────────────
+  JPG / JPEG   → image/jpeg
+  PNG          → image/png
+  GIF          → image/gif
+
+SIZE LIMIT: 10MB (configurable via MAX_FILE_SIZE in .env)
+
+STORAGE
+───────
+Currently: Local disk storage in /uploads/
+Bonus/Production: AWS S3 (swap multer diskStorage for multerS3,
+store S3 URL in file_url column instead of local path)
+
+
+----------------------------------------------------------------
+4. APPROVAL WORKFLOW DESIGN
+----------------------------------------------------------------
+
+CONTENT LIFECYCLE
+─────────────────
+
+  [uploaded] → [pending] → [approved] → (live if scheduled)
+                        ↘ [rejected]  → (rejection_reason stored)
+
+State transitions are strictly enforced in ApprovalService:
+  - Only 'pending' content can be approved or rejected
+  - Attempting to approve already-approved content → 409 Conflict
+  - Attempting to reject already-rejected content → 409 Conflict
+  - Only principal role can trigger any transition (RBAC guard)
+
+APPROVAL DB FIELDS UPDATED
+───────────────────────────
+On approve:
+  status      = 'approved'
+  approved_by = principal UUID
+  approved_at = NOW()
+
+On reject:
+  status           = 'rejected'
+  rejection_reason = provided reason string
+  approved_by      = principal UUID (who took action)
+  approved_at      = NOW()
+
+REJECTION REASON
+────────────────
+  - Required field, minimum 5 characters
+  - Validated by Joi (rejectSchema)
+  - Stored in content.rejection_reason column
+  - Visible to teacher via GET /api/content/my-content
+
+PRINCIPAL FILTERS
+─────────────────
+GET /api/approval/all supports query params:
+  ?status=approved|pending|rejected
+  ?subject=maths
+  ?teacherId=uuid
+  ?page=1&limit=10
+
+Pagination is built-in for scalability. Returns:
+  { data, total, page, limit, totalPages }
+
+
+----------------------------------------------------------------
+5. SCHEDULING / ROTATION LOGIC  ← MOST IMPORTANT
+----------------------------------------------------------------
+
+OVERVIEW
+────────
+Each teacher has independent content per subject.
+Each subject has its own rotation cycle.
+The system determines which content is currently active
+using only the current time — no cron jobs, no stored state.
+
+PREREQUISITES FOR CONTENT TO BE LIVE
+─────────────────────────────────────
+ALL of the following must be true:
+  1. content.status = 'approved'
+  2. content.start_time IS NOT NULL
+  3. content.end_time IS NOT NULL
+  4. NOW() >= content.start_time
+  5. NOW() <= content.end_time
+  6. content has a row in content_schedule table
+
+If any condition fails → content is not shown.
+
+ROTATION ALGORITHM (step by step)
+──────────────────────────────────
+
+Given: a teacher's approved + active content grouped by subject
+
+Example — Maths subject has 3 items:
+  Content A → duration 5 min (300 seconds)
+  Content B → duration 5 min (300 seconds)
+  Content C → duration 5 min (300 seconds)
+  Total cycle = 900 seconds
+
+Step 1: Get elapsed seconds since fixed epoch reference
+  EPOCH_REF = 2024-01-01T00:00:00.000Z  (fixed, never changes)
+  elapsedSeconds = floor((NOW - EPOCH_REF) / 1000)
+
+Step 2: Find position within current cycle
+  positionInCycle = elapsedSeconds % cycleTotalSeconds
+  positionInCycle = elapsedSeconds % 900
+
+Step 3: Walk items in rotation_order, accumulate durations
+  accumulated = 0
+  For each item (sorted by rotation_order):
+    accumulated += item.duration * 60
+    if positionInCycle < accumulated → this item is ACTIVE → break
+
+Step 4: Calculate time remaining in current slot
+  slotStart        = accumulated - item.duration * 60
+  secondsIntoSlot  = positionInCycle - slotStart
+  secondsRemaining = item.duration * 60 - secondsIntoSlot
+  active_until     = NOW + secondsRemaining seconds
+
+EXAMPLE CALCULATION
+───────────────────
+  Cycle = 900 seconds (3 items × 5 min)
+  elapsedSeconds = 1000 (since epoch ref)
+  positionInCycle = 1000 % 900 = 100 seconds
+
+  Walk:
+    Content A → accumulated = 300 → 100 < 300 → ACTIVE ✓
+    (stop here)
+
+  secondsIntoSlot  = 100 - 0 = 100
+  secondsRemaining = 300 - 100 = 200 seconds
+  active_until     = NOW + 200 seconds
+
+WHY NO CRON / NO STORED STATE
+──────────────────────────────
+The algorithm is purely mathematical.
+Given any timestamp, it always produces the same result.
+This means:
+  - Server restarts don't break rotation
+  - No background jobs needed
+  - No race conditions
+  - Horizontally scalable (multiple server instances agree)
+  - Deterministic and testable
+
+MULTI-SUBJECT INDEPENDENCE
+──────────────────────────
+Each subject runs its own independent cycle.
+Maths and Science do not interfere with each other.
+The public API returns one active item per subject.
+
+Example response with two subjects:
+  data: [
+    { subject: "maths",   title: "Chapter 1", seconds_remaining: 187 },
+    { subject: "science", title: "Newton Laws", seconds_remaining: 43 }
+  ]
+
+EDGE CASES HANDLED
+──────────────────
+Case 1: Teacher has no approved content
+  → rows array is empty → return null → "No content available"
+
+Case 2: Content approved but start_time/end_time not set
+  → SQL WHERE filters out null start/end → not returned → empty
+
+Case 3: Content approved, has schedule, but outside time window
+  → SQL WHERE (start_time <= NOW AND end_time >= NOW) filters it out
+
+Case 4: Invalid or non-existent teacherId
+  → UserModel.findById returns null → return null → "No content available"
+
+Case 5: UUID belongs to a principal, not a teacher
+  → role check fails → return null → "No content available"
+
+Case 6: All conditions met but no item resolves in walk loop
+  → activeItems array stays empty → return null → "No content available"
+
+PUBLIC API RULES
+────────────────
+  - No authentication required (students access it freely)
+  - Only approved content is ever returned
+  - Pending and rejected content is never exposed
+  - Response shape is always the same (empty array or data array)
+  - HTTP status is always 200 — never 404 for empty content
+
+
+----------------------------------------------------------------
+6. DATABASE DESIGN DECISIONS
+----------------------------------------------------------------
+
+TABLES
+──────
+
+users
+  id            UUID PK (gen_random_uuid())
+  name          VARCHAR(100)
+  email         VARCHAR(150) UNIQUE
+  password_hash TEXT
+  role          ENUM('principal', 'teacher')
+  created_at    TIMESTAMPTZ
+
+content
+  id               UUID PK
+  title            VARCHAR(200)
+  description      TEXT nullable
+  subject          VARCHAR(100)
+  file_url         TEXT
+  file_type        VARCHAR(20)
+  file_size        INTEGER (bytes)
+  uploaded_by      UUID FK → users.id
+  status           ENUM('pending','approved','rejected') DEFAULT 'pending'
+  rejection_reason TEXT nullable
+  approved_by      UUID FK → users.id nullable
+  approved_at      TIMESTAMPTZ nullable
+  start_time       TIMESTAMPTZ nullable
+  end_time         TIMESTAMPTZ nullable
+  created_at       TIMESTAMPTZ
+
+content_slots
+  id         UUID PK
+  subject    VARCHAR(100)
+  teacher_id UUID FK → users.id
+  created_at TIMESTAMPTZ
+  UNIQUE(subject, teacher_id)  ← one slot per teacher per subject
+
+content_schedule
+  id             UUID PK
+  content_id     UUID FK → content.id ON DELETE CASCADE
+  slot_id        UUID FK → content_slots.id
+  rotation_order INTEGER DEFAULT 0
+  duration       INTEGER DEFAULT 5  (minutes)
+  created_at     TIMESTAMPTZ
+
+WHY UUID OVER SERIAL INT
+────────────────────────
+  - Safe to expose in public URLs (no enumeration attack)
+  - Works across distributed systems and DB replicas
+  - PostgreSQL gen_random_uuid() is built-in (no extension needed)
+
+WHY NO ORM
+──────────
+  Raw pg queries used intentionally:
+  - Full control over query shape and indexes
+  - No hidden N+1 queries from ORM magic
+  - Easier to reason about performance
+  - Joins written explicitly and optimized
+
+IMPORTANT INDEXES TO ADD
+────────────────────────
+  CREATE INDEX idx_content_uploaded_by ON content(uploaded_by);
+  CREATE INDEX idx_content_status ON content(status);
+  CREATE INDEX idx_content_subject ON content(subject);
+  CREATE INDEX idx_content_time_window ON content(start_time, end_time);
+  CREATE INDEX idx_schedule_slot_id ON content_schedule(slot_id);
+  CREATE INDEX idx_slots_teacher ON content_slots(teacher_id);
+
+RELATIONSHIPS
+─────────────
+  users (1) ──< content (many)         via uploaded_by
+  users (1) ──< content_slots (many)   via teacher_id
+  content_slots (1) ──< content_schedule (many)  via slot_id
+  content (1) ──< content_schedule (1) via content_id
+
+
+----------------------------------------------------------------
+7. MIDDLEWARE USAGE
+----------------------------------------------------------------
+
+Request lifecycle for a protected route:
+
+  HTTP Request
+      ↓
+  helmet()          → Sets security headers (XSS, HSTS, etc.)
+  cors()            → Allows cross-origin requests
+  morgan('dev')     → Logs method, path, status, response time
+  express.json()    → Parses JSON body into req.body
+      ↓
+  protect()         → Verifies JWT, sets req.user
+  authorizeRoles()  → Checks req.user.role against allowed roles
+      ↓
+  upload.single()   → (content routes only) Multer file handling
+  handleUploadError → Normalizes Multer errors to AppError
+  validate(schema)  → Joi validates req.body, throws 422 on failure
+      ↓
+  asyncHandler(fn)  → Wraps controller, catches async errors
+  Controller        → Calls service, returns response
+      ↓
+  errorHandler()    → Catches all AppError and unknown errors
+                      Returns uniform { success, message } shape
+
+Public routes skip protect() and authorizeRoles() entirely.
+
+
+----------------------------------------------------------------
+8. SCALABILITY APPROACH
+----------------------------------------------------------------
+
+CURRENT DESIGN (production-ready for assignment scope)
+───────────────────────────────────────────────────────
+  - Stateless JWT auth → horizontal scaling ready
+  - No session store needed
+  - pg Pool with max 10 connections (tunable)
+  - Scheduling algorithm is stateless and deterministic
+  - Pagination on all list endpoints
+
+BONUS FEATURES IMPLEMENTED
+───────────────────────────
+  - Rotation preview endpoint for debugging
+  - Filters on approval list (status, subject, teacher, page)
+  - seconds_remaining_in_slot + active_until in live response
+    (client can use this to auto-refresh at the right moment)
+
+WHAT WOULD BE ADDED IN PRODUCTION
+───────────────────────────────────
+
+1. REDIS CACHING
+   Cache GET /content/live/:teacherId responses
+   TTL = seconds_remaining_in_slot (auto-expires exactly when
+   the active content changes — no stale data)
+
+   Implementation:
+     - Check Redis before hitting DB
+     - On cache miss → compute → store with TTL
+     - Invalidate on approve/reject actions
+
+2. RATE LIMITING
+   Use express-rate-limit on public endpoint:
+     /content/live/:teacherId → 60 requests/minute per IP
+   Prevents abuse from students hammering the endpoint
+
+3. S3 FILE STORAGE
+   Replace multer diskStorage with multer-s3
+   Store S3 URL in file_url column
+   Benefits: CDN delivery, no local disk dependency,
+   works across multiple server instances
+
+4. QUEUES FOR APPROVAL NOTIFICATIONS
+   Use Bull (Redis-backed) to send email/push notifications
+   to teachers when their content is approved or rejected
+   Decouples notification from the request lifecycle
+
+5. SUBJECT-WISE ANALYTICS
+   Track content views per subject in a content_views table:
+     id, content_id, teacher_id, viewed_at
+   Aggregate for: most active subject, peak hours, view counts
+
+6. DATABASE READ REPLICA
+   Route GET queries to read replica
+   Route INSERT/UPDATE to primary
+   Reduces load on primary DB
+
+7. HEALTH CHECK ENDPOINT
+   GET /health → { status: "ok", db: "connected", uptime: 123 }
+   Used by load balancers and container orchestration (K8s)
+
+
+----------------------------------------------------------------
+9. ASSUMPTIONS MADE
+----------------------------------------------------------------
+
+1. A teacher can have multiple content items per subject —
+   all participate in rotation once approved.
+
+2. If a teacher uploads content without start_time/end_time,
+   it is stored and scheduled but never shown publicly until
+   the teacher updates those fields.
+
+3. The rotation epoch reference (2024-01-01T00:00:00Z) is fixed
+   and shared. All server instances use the same reference so
+   rotation is consistent regardless of which instance handles
+   the request.
+
+4. duration in content_schedule defaults to 5 minutes if the
+   teacher does not specify one during upload.
+
+5. Subject names are stored in lowercase to prevent duplicates
+   like "Maths" vs "maths" creating separate slots.
+
+6. One content item maps to exactly one schedule row.
+   A single item cannot appear twice in the same rotation.
+
+7. The principal can see all teachers' content.
+   Teachers can only see their own uploads.
+
+8. Rejected content can be re-uploaded as a new submission.
+   There is no edit flow — teacher uploads fresh content.
+
+9. content_slots has a UNIQUE constraint on (subject, teacher_id)
+   so uploading multiple Maths items reuses the same slot,
+   keeping the rotation in one coherent group.
+
+
+================================================================
+END OF ARCHITECTURE NOTES
+================================================================
