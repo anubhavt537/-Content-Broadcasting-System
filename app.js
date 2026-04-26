@@ -37,7 +37,6 @@ app.use('/content', publicRoutes);
 
 
 
-// Both multer and static now point to the exact same folder
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 
@@ -46,7 +45,7 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-// Global error handler — must be last
+// Global error handler
 app.use(errorHandler);
 
 

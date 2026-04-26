@@ -1,7 +1,7 @@
 import { pool } from '../config/db.config.js';
 export const ScheduleModel = {
   async createSlot({ subject, teacherId }) {
-    // Reuse existing slot for same teacher+subject if exists
+    
     const { rows: existing } = await pool.query(
       `SELECT id FROM content_slots WHERE subject = $1 AND teacher_id = $2`,
       [subject, teacherId]

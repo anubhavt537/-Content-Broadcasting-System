@@ -50,7 +50,7 @@ export const ContentModel = {
   },
 
 
-  // add these methods to your existing ContentModel object
+
 
 async findPending() {
   const { rows } = await pool.query(

@@ -25,14 +25,12 @@ export const SchedulingService = {
       return acc;
     }, {});
 
-    // 4. For each subject determine which item is currently active
+
     const activeItems = [];
 
     const now = new Date();
 
-    // Fixed epoch reference point for rotation calculation
-    // Using Unix epoch so rotation is deterministic and consistent
-    // across server restarts — no state needed
+
     const EPOCH_REF = new Date('2024-01-01T00:00:00.000Z');
     const elapsedSeconds = Math.floor((now - EPOCH_REF) / 1000);
 

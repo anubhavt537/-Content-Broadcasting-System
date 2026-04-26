@@ -5,7 +5,7 @@ import { AppError } from '../utils/AppError.js';
 
 export const ContentService = {
   async upload({ body, file, userId }) {
-    // file is guaranteed by multer — but double-check
+    
     if (!file) throw new AppError('File is required', 422);
 
     const { title, description, subject, start_time, end_time, duration } = body;
@@ -28,7 +28,7 @@ export const ContentService = {
       endTime: end_time || null,
     });
 
-    // 2. Create or reuse slot for this teacher+subject
+    // 2. Create or get content slot for this subject+teacher
     const slot = await ScheduleModel.createSlot({
       subject: subject.toLowerCase(),
       teacherId: userId,

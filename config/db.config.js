@@ -18,10 +18,10 @@ export const pool = new Pool({
 });
 
 pool.on('connect', () => {
-  console.log('✅ PostgreSQL connected');
+  console.log(' PostgreSQL connected');
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Unexpected DB error', err);
+  console.error(' Unexpected DB error', err);
   process.exit(1);
 });
