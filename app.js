@@ -13,7 +13,7 @@ import { UPLOAD_DIR } from './config/multer.js';
 import { globalLimiter } from './middleware/rateLimiter.middleware.js';
 
 const app = express();
-
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors());
 app.use(morgan('dev'));
@@ -48,5 +48,6 @@ app.use((req, res) => {
 
 // Global error handler — must be last
 app.use(errorHandler);
+
 
 export default app;
