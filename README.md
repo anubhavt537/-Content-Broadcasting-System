@@ -179,15 +179,3 @@ npm run dev
 * Rate limiting
 
 
-
-
----
-
-# 🙌 Author
-
-**Anubhav**
-
-
-
-* turn this into a **perfect resume project description (1–2 lines)**
-* or simulate a **real interview on this project** 🔥
