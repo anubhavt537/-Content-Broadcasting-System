@@ -1,30 +1,30 @@
-export default {
+module.exports = {
   apps: [
     {
       name: "express-app",
-      script: "src/server.js",
 
-      instances: 1,
-      exec_mode: "fork",
+      // Entry point of your app
+      script: "./src/server.js",
 
+      // Run mode
+      instances: 1,          // keep 1 for now (safe)
+      exec_mode: "fork",     // simple mode (stable)
+
+      // Auto restart if crash
       autorestart: true,
-      watch: false,
-      max_memory_restart: "300M",
 
-      env: {
-        NODE_ENV: "development",
-        PORT: 3000,
-      },
-      env_production: {
-        NODE_ENV: "production",
-        PORT: 3000,
-      },
+      // Restart if memory > 1GB
+      max_memory_restart: "1G",
 
+      // Logs
       error_file: "./logs/error.log",
-      out_file: "./logs/out.log",
-      log_date_format: "YYYY-MM-DD HH:mm Z",
+      out_file: "./logs/output.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
 
-      restart_delay: 5000,
-    },
-  ],
+      
+      env: {
+        PORT: 3000
+      }
+    }
+  ]
 };
